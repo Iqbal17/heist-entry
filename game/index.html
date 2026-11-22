@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VAULTBREAK — a tiny top-down heist</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #070b0f;
+    color: #cfe0ee;
+    font-family: system-ui, sans-serif;
+  }
+  body {
+    min-height: 100vh;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 18px 0;
+  }
+  h1 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: #d8b13a;
+  }
+  canvas {
+    background: #0d141c;
+    border: 1px solid #223140;
+    box-shadow: 0 12px 44px rgba(0, 0, 0, 0.55);
+    max-width: 96vw;
+    height: auto;
+  }
+  p {
+    margin: 0;
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    color: #7e93a6;
+  }
+</style>
+</head>
+<body>
+<h1>VAULTBREAK</h1>
+<canvas id="game" width="960" height="600"></canvas>
+<p>WASD / arrows move &middot; Shift sneak &middot; E grab &amp; crack &middot; Click throw a coin &middot; P pause &middot; M mute</p>
+<script src="src/config.js"></script>
+<script src="src/input.js"></script>
+<script src="src/world.js"></script>
+<script src="src/render.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>
