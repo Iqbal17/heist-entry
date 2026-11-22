@@ -186,6 +186,7 @@ function frame(ts) {
 function stageShot(scene, level) {
   run = newRun();
   loadRoom(run, clampNum(level - 1, 0, VB_LEVELS.length - 1));
+  run.staged = true;   // render.js skips its live-only effects for this frame
   var room = run.room, th = room.thief, G = room.guards, C = room.cameras;
   room.time = 2.0;
 
@@ -238,7 +239,11 @@ function stageShot(scene, level) {
     G[0].suspicion = 0.35;
     G[1].x = 700; G[1].y = 470; G[1].angle = -Math.PI / 2;
     G[1].suspicion = 0.1;
-    C[0].angle = Math.PI / 2 + 0.3;
+    // The Lobby camera is remounted toward the right and raked diagonally —
+    // in staging only — so its cone visibly crosses the room in the cover
+    // frame instead of pooling in the top strip.
+    C[0].x = 672;
+    C[0].angle = Math.PI / 2 + 0.5;
     run.alarm = 22;
     run.totalTime = 42;
   }

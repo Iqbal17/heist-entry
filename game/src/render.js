@@ -37,6 +37,19 @@ function drawFloor(ctx, room) {
   ctx.strokeStyle = 'rgba(216,177,58,0.07)';
   ctx.lineWidth = 2;
   ctx.strokeRect(36, 84, 888, 480);
+  // Floor dressing, painted under everything else: a deep-red carpet in the
+  // middle of the room and the room's name lettered on the floor itself.
+  // Both stay faint — set dressing, never louder than the cones and loot
+  // drawn on top of it.
+  ctx.fillStyle = 'rgba(110,28,40,0.12)';
+  ctx.fillRect(200, 174, 560, 300);
+  ctx.strokeStyle = 'rgba(216,177,58,0.08)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(200, 174, 560, 300);
+  ctx.strokeStyle = 'rgba(216,177,58,0.05)';
+  ctx.strokeRect(212, 186, 536, 276);
+  drawText(ctx, room.def.name.toUpperCase(), VB_W / 2, 336,
+    '800 44px system-ui, sans-serif', 'rgba(232,238,244,0.05)', 'center');
 }
 
 function drawExit(ctx, room) {
@@ -57,7 +70,7 @@ function drawExit(ctx, room) {
     open ? '#7de2a8' : '#8a5a5a', 'center');
 }
 
-function drawLootItem(ctx, l, t) {
+function drawLootItem(ctx, l, t, live) {
   if (l.taken) return;
   var bob = Math.sin(t * 2 + l.x * 0.7) * 1.5;
   ctx.fillStyle = 'rgba(255,220,120,0.07)';
@@ -90,6 +103,19 @@ function drawLootItem(ctx, l, t) {
     ctx.fill(); ctx.stroke();
     ctx.beginPath();
     ctx.moveTo(l.x - 8, l.y + bob); ctx.lineTo(l.x + 8, l.y + bob);
+    ctx.stroke();
+  }
+  // Live play only: uncollected loot glints — a small four-point sparkle
+  // pulsing beside the stack, so the eye keeps finding what is left to take.
+  if (live) {
+    var sp = 0.5 + 0.5 * Math.sin(t * 3.2 + l.x * 1.3 + l.y * 0.7);
+    var sr = 2.6 + 2.2 * sp;
+    var sx = l.x + 11, sy = l.y - 11 + bob;
+    ctx.strokeStyle = 'rgba(255,240,180,' + (0.2 + 0.5 * sp).toFixed(3) + ')';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(sx - sr, sy); ctx.lineTo(sx + sr, sy);
+    ctx.moveTo(sx, sy - sr); ctx.lineTo(sx, sy + sr);
     ctx.stroke();
   }
   drawText(ctx, money(l.value), l.x, l.y + 22, '600 9px system-ui, sans-serif', '#9fb4c4', 'center');
@@ -202,20 +228,35 @@ function drawVaultBlock(ctx, r) {
   drawText(ctx, 'VAULT', cx, r.y + r.h - 10, '700 12px system-ui, sans-serif', '#39424b', 'center');
 }
 
+// A cone's light pool: bright at the watcher's eye, fading to a whisper at
+// the rim, so a cone reads as cast light instead of a flat wedge. The falloff
+// is a pure function of the watcher's position, so staged frames get the
+// identical gradient live play does.
+function coneGradient(ctx, x, y, range, rgb, a0, a1) {
+  var g = ctx.createRadialGradient(x, y, 6, x, y, range);
+  g.addColorStop(0, 'rgba(' + rgb + ',' + a0.toFixed(3) + ')');
+  g.addColorStop(0.55, 'rgba(' + rgb + ',' + (a0 * 0.55).toFixed(3) + ')');
+  g.addColorStop(1, 'rgba(' + rgb + ',' + a1.toFixed(3) + ')');
+  return g;
+}
+
 function drawCones(ctx, room) {
   var i, g, cam;
   for (i = 0; i < room.guards.length; i++) {
     g = room.guards[i];
     var pts = conePolygon(g.x, g.y, g.angle, GUARD_HALF, GUARD_RANGE, room.solids);
     var gr = Math.round(200 - 150 * g.suspicion);
-    ctx.fillStyle = 'rgba(255,' + gr + ',50,' + (0.15 + 0.13 * g.suspicion).toFixed(3) + ')';
+    ctx.fillStyle = coneGradient(ctx, g.x, g.y, GUARD_RANGE,
+      '255,' + gr + ',50', 0.30 + 0.22 * g.suspicion, 0.02);
     polyPath(ctx, pts);
     ctx.fill();
   }
   for (i = 0; i < room.cameras.length; i++) {
     cam = room.cameras[i];
     var cps = conePolygon(cam.x, cam.y, cam.angle, CAM_HALF, CAM_RANGE, room.solids);
-    ctx.fillStyle = cam.seeing ? 'rgba(255,90,90,0.20)' : 'rgba(90,200,255,0.12)';
+    ctx.fillStyle = cam.seeing
+      ? coneGradient(ctx, cam.x, cam.y, CAM_RANGE, '255,90,90', 0.34, 0.03)
+      : coneGradient(ctx, cam.x, cam.y, CAM_RANGE, '90,200,255', 0.22, 0.02);
     polyPath(ctx, cps);
     ctx.fill();
   }
@@ -275,8 +316,19 @@ function drawGuard(ctx, g) {
   }
 }
 
-function drawThief(ctx, th) {
+function drawThief(ctx, th, live) {
   var r = th.sneaking ? 9.5 : THIEF_R;
+  // Live play only: a flutter of gold behind a moving thief — the scarf
+  // streams out as fading motes opposite the facing. Staged frames skip it,
+  // so a composed screenshot never smears.
+  if (live && th.moving) {
+    for (var k = 3; k >= 1; k--) {
+      var bx = th.x - Math.cos(th.angle) * (r + 3 + k * 8);
+      var by = th.y - Math.sin(th.angle) * (r + 3 + k * 8);
+      ctx.fillStyle = 'rgba(216,177,58,' + (0.30 - k * 0.08).toFixed(3) + ')';
+      ctx.beginPath(); ctx.arc(bx, by, 5 - k * 1.1, 0, Math.PI * 2); ctx.fill();
+    }
+  }
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.beginPath(); ctx.ellipse(th.x, th.y + 9, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
   // The gold scarf is the thief's one vanity — and the player's best landmark.
@@ -328,26 +380,48 @@ function drawHUD(ctx, run) {
   ctx.fillRect(352, 26, 256 * a / 100, 10);
   drawText(ctx, Math.floor(a) + '%', 616, 36, '700 12px system-ui, sans-serif', '#e8eef4');
 
-  drawText(ctx, 'LOOT ' + money(run.lootTotal), VB_W - 16, 22, '700 15px system-ui, sans-serif', '#d8b13a', 'right');
+  // What is still on this room's floor: the loose pickups not yet pocketed,
+  // plus the safe itself while it stands uncracked.
+  var left = room.safe.cracked ? 0 : 1, li;
+  for (li = 0; li < room.loot.length; li++) if (!room.loot[li].taken) left++;
+  drawText(ctx, 'LOOT ' + money(run.lootTotal) + ' · ' + left + ' left',
+    VB_W - 16, 22, '700 15px system-ui, sans-serif', '#d8b13a', 'right');
   drawText(ctx, 'COINS ×' + run.coins + ' · ' + fmtClock(run.totalTime),
     VB_W - 16, 39, '400 11px system-ui, sans-serif', '#8fa6ba', 'right');
 }
 
+// The previous live frame's alarm, so drawWorld can tell a climbing meter
+// from a falling one. Staged frames never read or write it.
+var vbPrevAlarm = 0;
+
 function drawWorld(ctx, run) {
   var room = run.room, i;
+  var live = !run.staged;   // staged frames skip every live-only effect below
   ctx.fillStyle = '#0d141c';
   ctx.fillRect(0, 0, VB_W, VB_H);
   drawFloor(ctx, room);
   drawExit(ctx, room);
-  for (i = 0; i < room.loot.length; i++) drawLootItem(ctx, room.loot[i], room.time);
+  for (i = 0; i < room.loot.length; i++) drawLootItem(ctx, room.loot[i], room.time, live);
   drawSafe(ctx, run);
   drawDecoys(ctx, room);
   drawCones(ctx, room);
   drawSolids(ctx, room);
   for (i = 0; i < room.cameras.length; i++) drawCameraBody(ctx, room.cameras[i]);
   for (i = 0; i < room.guards.length; i++) drawGuard(ctx, room.guards[i]);
-  drawThief(ctx, room.thief);
+  drawThief(ctx, room.thief, live);
   drawHUD(ctx, run);
+  // Live play only: while the meter climbs past halfway, the room's edges
+  // breathe red — a slow sin pulse on room time. Staged frames skip this and
+  // keep the fixed frame the border below already gives them.
+  if (live) {
+    if (run.alarm > 50 && run.alarm > vbPrevAlarm) {
+      var pulse = 0.05 + 0.035 * (0.5 + 0.5 * Math.sin(room.time * 4));
+      ctx.strokeStyle = 'rgba(255,60,40,' + pulse.toFixed(3) + ')';
+      ctx.lineWidth = 26;
+      ctx.strokeRect(13, VB_HUD_H + 13, VB_W - 26, VB_H - VB_HUD_H - 26);
+    }
+    vbPrevAlarm = run.alarm;
+  }
   // High alarm: the room itself starts to feel it.
   if (run.alarm > 70) {
     ctx.strokeStyle = 'rgba(255,60,40,' + (0.25 + 0.2 * Math.sin(room.time * 5)).toFixed(3) + ')';
